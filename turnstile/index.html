@@ -1,0 +1,130 @@
+<head>
+  <title>Demo Cloudflare Turnstile</title>
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
+
+  <script>
+    function make(tag, opts) {
+      let e = document.createElement(tag);
+      Object.keys(opts).forEach(k => e.setAttribute(k, opts[k]));
+      return e;
+    }
+
+    function readInput(name) {
+      return document.querySelector(`input[name="${name}"]:checked`).value;
+    }
+
+    function pushOutput(str) {
+      let pre = document.createElement('pre');
+      pre.innerText = str;
+
+      document.getElementById('output').append(pre);
+    }
+
+    function loadWidget() {
+      let sitekey = readInput('sitekey');
+      turnstile.render('#widget', {
+        sitekey,
+        callback: widgetCallback,
+      });
+    }
+
+    function widgetCallback(token) {
+      pushOutput(`widget callback: ${token}`);
+      let result = siteverify(token);
+      pushOutput(`siteverify: ${JSON.stringify(result, null, 2)}`);
+    }
+
+    async function siteverify(token) {
+      let secretKey = readInput('secret-key');
+      let formData = new FormData();
+      formData.append('secret', secretKey);
+      formData.append('response', token);
+
+      const url = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
+      const result = await fetch(url, {body: formData, method: 'POST'});
+      return await result.json();
+    }
+
+    function jsonify(obj) {
+      return JSON.stringify(obj, null, 4);
+    }
+
+    function onload() {
+      loadWidget();
+    }
+  </script>
+
+  <style>
+    body {
+      font-family: sans-serif;
+      width: 30%;
+      margin: auto;
+    }
+    pre {
+      font-family: monospace;
+      margin: 5px;
+      padding: 10px;
+      background-color: #ddd;
+    }
+    div.container {
+      margin: 10px;
+    }
+  </style>
+</head>
+
+<body onload="onload()">
+  <div class="container">
+    <fieldset onchange="loadWidget()">
+      <legend>Select sitekey for widget:</legend>
+      <div>
+        <input type="radio" id="01" name="sitekey" value="1x00000000000000000000AA" checked />
+        <label for="01">Visible, always passing</label>
+      </div>
+      <div>
+        <input type="radio" id="02" name="sitekey" value="2x00000000000000000000AB" />
+        <label for="02">Visible, always failing, throws <a href="https://developers.cloudflare.com/turnstile/reference/client-side-errors/">Error 600xxx</a></label>
+      </div>
+      <div>
+        <input type="radio" id="03" name="sitekey" value="1x00000000000000000000BB" />
+        <label for="03">Invisible, always passing</label>
+      </div>
+      <div>
+        <input type="radio" id="04" name="sitekey" value="2x00000000000000000000BB" />
+        <label for="04">Visible, always failing, throws <a href="https://developers.cloudflare.com/turnstile/reference/client-side-errors/">Error 600xxx</a></label>
+      </div>
+      <div>
+        <input type="radio" id="05" name="sitekey" value="3x00000000000000000000FF" />
+        <label for="05">Always interactive</label>
+      </div>
+    </fieldset>
+  </div>
+
+  <div class="container">
+    <fieldset onchange="loadWidget()">
+      <legend>Select secret key for siteverify API:</legend>
+      <div>
+        <input type="radio" id="01" name="secret-key" value="2x0000000000000000000000000000000AA" checked />
+        <label for="01">Always passing</label>
+      </div>
+      <div>
+        <input type="radio" id="02" name="secret-key" value="2x0000000000000000000000000000000AA" />
+        <label for="02">Always fails</label>
+      </div>
+      <div>
+        <input type="radio" id="03" name="secret-key" value="3x0000000000000000000000000000000AA" />
+        <label for="03">Yields a "token already spent" error</label>
+      </div>
+    </fieldset>
+  </div>
+
+  <div class="container">
+    <br>
+    <div id="widget"></div>
+    <br>
+    <p>Output:</p>
+      <div class="container" id="output">
+    </div>
+  </div>
+</body>
+
+
